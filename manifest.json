@@ -1,0 +1,22 @@
+
+{
+  "name": "المصداقية للإلكترونيات",
+  "short_name": "المصداقية",
+  "description": "تطبيق متكامل لمكاتب الصرافة والدفع الإلكتروني وحساب الأرباح.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "https://g.top4top.io/p_36302vlm50.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "https://g.top4top.io/p_36302vlm50.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
