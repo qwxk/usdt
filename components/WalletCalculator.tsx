@@ -1,11 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
-import { Calculator, Printer, ShieldCheck, Banknote, Landmark, Loader2 } from 'lucide-react';
+import { Calculator, Printer, ShieldCheck, Banknote, Landmark, Loader2, RefreshCcw, Coins, FileText } from 'lucide-react';
 import { printReceipt } from '../services/printService';
 
 const WalletCalculator: React.FC = () => {
   const [requiredAmount, setRequiredAmount] = useState<number>(0);
-  const [isPrinting, setIsPrinting] = useState(false);
+  const [usdtAmount, setUsdtAmount] = useState<number>(0);
+  const [isPrintingReceipt, setIsPrintingReceipt] = useState(false);
+  const [isPrintingRate, setIsPrintingRate] = useState(false);
   
   const BANK_FEE_PERCENT = 3.0;
   const WALLET_FEE_PERCENT = 1.0;
@@ -14,12 +16,14 @@ const WalletCalculator: React.FC = () => {
     const bankFee = (requiredAmount * BANK_FEE_PERCENT) / 100;
     const walletFee = (requiredAmount * WALLET_FEE_PERCENT) / 100;
     const totalCharge = requiredAmount + bankFee + walletFee;
-    return { bankFee, walletFee, totalCharge };
-  }, [requiredAmount]);
+    const buyRate = usdtAmount > 0 ? totalCharge / usdtAmount : 0;
+    
+    return { bankFee, walletFee, totalCharge, buyRate };
+  }, [requiredAmount, usdtAmount]);
 
-  const handlePrint = async () => {
+  const handlePrintFullReceipt = async () => {
     if (requiredAmount <= 0) return;
-    setIsPrinting(true);
+    setIsPrintingReceipt(true);
     
     setTimeout(() => {
       printReceipt({
@@ -29,14 +33,31 @@ const WalletCalculator: React.FC = () => {
           totalCharge: calculations.totalCharge,
           bankFee: calculations.bankFee,
           walletFee: calculations.walletFee,
-          usdt: 0,
-          sellRate: 0,
           date: new Date().toLocaleString('ar-LY')
         }
       });
-      setIsPrinting(false);
+      setIsPrintingReceipt(false);
       window.dispatchEvent(new CustomEvent('app-toast', { 
         detail: { message: 'تمت طباعة إيصال الشحن بنجاح', type: 'success' } 
+      }));
+    }, 800);
+  };
+
+  const handlePrintBuyRateOnly = async () => {
+    if (calculations.buyRate <= 0) return;
+    setIsPrintingRate(true);
+    
+    setTimeout(() => {
+      printReceipt({
+        type: 'BUY_RATE',
+        data: {
+          buyRate: calculations.buyRate,
+          date: new Date().toLocaleString('ar-LY')
+        }
+      });
+      setIsPrintingRate(false);
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { message: 'تمت طباعة سعر صرف الشراء فقط', type: 'success' } 
       }));
     }, 800);
   };
@@ -64,33 +85,51 @@ const WalletCalculator: React.FC = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="relative group">
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-400 group-focus-within:scale-110 transition-all duration-300 z-10">
-              <Banknote className="w-6 h-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="relative group">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-400 group-focus-within:scale-110 transition-all duration-300 z-10">
+                <Banknote className="w-6 h-6" />
+              </div>
+              <input 
+                type="number" 
+                className="w-full bg-slate-900/50 pr-14 pl-6 py-6 rounded-2xl border-2 border-slate-800 text-white focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-2xl font-black placeholder:text-slate-800 shadow-inner relative z-0"
+                placeholder="0.00"
+                value={requiredAmount || ''}
+                onChange={(e) => setRequiredAmount(Number(e.target.value))}
+                autoFocus
+              />
+              <label className="absolute -top-2 right-4 px-2 bg-slate-950 text-[10px] font-black text-blue-400 uppercase tracking-widest transition-all group-focus-within:text-blue-300 z-10">
+                المبلغ المراد شحنه (دينار)
+              </label>
             </div>
-            <input 
-              type="number" 
-              className="w-full bg-slate-900/50 pr-14 pl-6 py-6 rounded-2xl border-2 border-slate-800 text-white focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 focus:shadow-[0_0_40px_rgba(59,130,246,0.2)] outline-none transition-all text-3xl font-black placeholder:text-slate-800 shadow-inner relative z-0"
-              placeholder="0.00"
-              value={requiredAmount || ''}
-              onChange={(e) => setRequiredAmount(Number(e.target.value))}
-              autoFocus
-            />
-            <label className="absolute -top-2 right-4 px-2 bg-slate-950 text-[10px] font-black text-blue-400 uppercase tracking-widest transition-all group-focus-within:text-blue-300 group-focus-within:scale-110 origin-right z-10">
-              المبلغ المطلوب شحنه
-            </label>
+
+            <div className="relative group">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-green-400 group-focus-within:scale-110 transition-all duration-300 z-10">
+                <Coins className="w-6 h-6" />
+              </div>
+              <input 
+                type="number" 
+                className="w-full bg-slate-900/50 pr-14 pl-6 py-6 rounded-2xl border-2 border-slate-800 text-white focus:border-green-400 focus:ring-4 focus:ring-green-500/10 outline-none transition-all text-2xl font-black placeholder:text-slate-800 shadow-inner relative z-0"
+                placeholder="0.00"
+                value={usdtAmount || ''}
+                onChange={(e) => setUsdtAmount(Number(e.target.value))}
+              />
+              <label className="absolute -top-2 right-4 px-2 bg-slate-950 text-[10px] font-black text-green-400 uppercase tracking-widest transition-all group-focus-within:text-green-300 z-10">
+                كمية USDT المستهدفة
+              </label>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-800/50 transition-all duration-300 hover:bg-slate-900/50 group-focus-within/card:border-blue-500/20">
-              <Landmark className="w-4 h-4 text-slate-500 transition-colors" />
+            <div className="flex items-center gap-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-800/50">
+              <Landmark className="w-4 h-4 text-slate-500" />
               <div>
                 <p className="text-[9px] font-bold text-slate-500 uppercase">المصرف</p>
                 <p className="text-sm font-black text-slate-300">{BANK_FEE_PERCENT}%</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-800/50 transition-all duration-300 hover:bg-slate-900/50 group-focus-within/card:border-blue-500/20">
-              <ShieldCheck className="w-4 h-4 text-slate-500 transition-colors" />
+            <div className="flex items-center gap-3 p-4 bg-slate-900/30 rounded-2xl border border-slate-800/50">
+              <ShieldCheck className="w-4 h-4 text-slate-500" />
               <div>
                 <p className="text-[9px] font-bold text-slate-500 uppercase">المحفظة</p>
                 <p className="text-sm font-black text-slate-300">{WALLET_FEE_PERCENT}%</p>
@@ -99,6 +138,27 @@ const WalletCalculator: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Real-time Exchange Rate Display */}
+      {calculations.buyRate > 0 && (
+        <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl flex items-center justify-between animate-in zoom-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+              <RefreshCcw className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">سعر صرف الشراء</p>
+              <p className="text-xs font-bold text-slate-400">بناءً على التكلفة الإجمالية</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-black text-white tracking-tighter tabular-nums">
+              {calculations.buyRate.toFixed(3)}
+            </p>
+            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">LYD / 1 USDT</p>
+          </div>
+        </div>
+      )}
 
       <div className="relative group overflow-hidden rounded-[2rem] transition-transform duration-500 hover:scale-[1.01]">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-900 group-hover:scale-110 transition-transform duration-1000"></div>
@@ -129,7 +189,7 @@ const WalletCalculator: React.FC = () => {
                 {calculations.totalCharge.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </h3>
             </div>
-            <div className="relative h-14 w-28 group-hover:rotate-2 transition-transform duration-500 rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-white/5 flex items-center justify-center p-1">
+            <div className="relative h-14 w-28 rounded-xl overflow-hidden shadow-2xl border border-white/20 bg-white/5 flex items-center justify-center p-1">
               <img 
                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Libyan_dinar_-_10_dinar_-_obverse.jpg/1920px-Libyan_dinar_-_10_dinar_-_obverse.jpg" 
                 alt="LYD" 
@@ -140,27 +200,39 @@ const WalletCalculator: React.FC = () => {
         </div>
       </div>
 
-      <button 
-        disabled={requiredAmount <= 0 || isPrinting}
-        onClick={handlePrint}
-        className={`group relative w-full py-6 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all duration-300 shadow-2xl disabled:opacity-50 overflow-hidden border-2
-          ${isPrinting ? 'bg-slate-800 text-blue-400 border-blue-500/50 cursor-wait' : 
-            'bg-slate-950 border-slate-800 text-blue-400 hover:bg-slate-900 hover:border-blue-500/50 active:scale-[0.98]'}`}
-      >
-        {isPrinting ? (
-          <>
-            <Loader2 className="w-6 h-6 animate-spin" />
-            <span className="animate-pulse">جاري الطباعة...</span>
-          </>
-        ) : (
-          <>
-            <Printer className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" />
-            <span>طباعة إيصال الشحن</span>
-          </>
-        )}
-      </button>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <button 
+          disabled={requiredAmount <= 0 || isPrintingReceipt}
+          onClick={handlePrintFullReceipt}
+          className={`group relative w-full py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all duration-300 shadow-xl disabled:opacity-50 overflow-hidden border-2
+            ${isPrintingReceipt ? 'bg-slate-800 text-blue-400 border-blue-500/50' : 
+              'bg-slate-950 border-slate-800 text-blue-400 hover:bg-slate-900 hover:border-blue-500/50 active:scale-[0.98]'}`}
+        >
+          {isPrintingReceipt ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Printer className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+          )}
+          <span>طباعة إيصال الشحن</span>
+        </button>
 
-      <div className="text-center opacity-30 group-focus-within/card:opacity-100 transition-opacity duration-500">
+        <button 
+          disabled={calculations.buyRate <= 0 || isPrintingRate}
+          onClick={handlePrintBuyRateOnly}
+          className={`group relative w-full py-5 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all duration-300 shadow-xl disabled:opacity-50 overflow-hidden border-2
+            ${isPrintingRate ? 'bg-slate-800 text-green-400 border-green-500/50' : 
+              'bg-slate-950 border-slate-800 text-green-400 hover:bg-slate-900 hover:border-green-500/50 active:scale-[0.98]'}`}
+        >
+          {isPrintingRate ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <FileText className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+          )}
+          <span>طباعة سعر الصرف فقط</span>
+        </button>
+      </div>
+
+      <div className="text-center opacity-30">
         <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.3em]">نظام الطباعة الحرارية 58 مم</p>
       </div>
     </div>

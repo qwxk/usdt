@@ -6,9 +6,9 @@ type PrintData = {
   walletFee?: number;
   usdt?: number;
   sellRate?: number;
-  buyRate?: number; // Removed from visible template
+  buyRate?: number;
   binanceId?: string;
-  totalBuy?: number; // Removed from visible template
+  totalBuy?: number;
   totalSell?: number;
   date: string;
 };
@@ -18,9 +18,15 @@ type DailyRateData = {
   date: string;
 };
 
+type BuyRateData = {
+  buyRate: number;
+  date: string;
+};
+
 export type PrintParams = 
   | { type: 'TRANSACTION'; data: PrintData }
   | { type: 'DAILY_RATE'; data: DailyRateData }
+  | { type: 'BUY_RATE'; data: BuyRateData }
   | { type: 'USDT_POS'; data: PrintData };
 
 export const printReceipt = (params: PrintParams) => {
@@ -36,8 +42,7 @@ export const printReceipt = (params: PrintParams) => {
       bankFee, 
       walletFee, 
       usdt, 
-      sellRate, 
-      totalSell,
+      buyRate,
       date 
     } = params.data;
     
@@ -83,6 +88,26 @@ export const printReceipt = (params: PrintParams) => {
           <p style="margin: 0; font-size: 11px; font-weight: 900;">شكراً لتعاملكم معنا</p>
           <p style="margin: 4px 0 0 0; font-size: 8px; opacity: 0.7;">نسعى دائماً لتقديم الأفضل بصدق وأمانة</p>
         </div>
+      </div>
+    `;
+  } else if (params.type === 'BUY_RATE') {
+    const { buyRate, date } = params.data;
+    container.innerHTML = `
+      <div style="font-family: 'Cairo', sans-serif; width: 100%; color: #000; padding: 10px; text-align: center; border: 2px solid #000; border-radius: 8px; direction: rtl;">
+        <img src="${logoUrl}" style="width: 50px; height: 50px; border-radius: 50%; margin-bottom: 5px;">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 900;">المصداقية للإلكترونيات</h2>
+        <p style="font-size: 10px; margin: 5px 0; font-weight: bold; color: #666;">إيصال سعر صرف الشراء</p>
+        <div style="border-bottom: 1px dashed #000; margin: 10px 0;"></div>
+        
+        <p style="margin: 0; font-size: 14px; font-weight: 900; color: #000;">سعر صرف الشراء:</p>
+        <div style="margin: 20px 0;">
+          <span style="font-size: 44px; font-weight: 900; line-height: 1; color: #d32f2f;">${buyRate.toFixed(3)}</span>
+          <p style="margin: 10px 0 0 0; font-size: 12px; font-weight: 900; background: #000; color: #fff; display: inline-block; padding: 3px 15px; border-radius: 5px;">دينار / 1 USDT</p>
+        </div>
+        
+        <div style="border-bottom: 1px dashed #000; margin: 10px 0;"></div>
+        <p style="font-size: 9px; font-weight: bold; opacity: 0.8;">تم الحساب بناءً على التكلفة الإجمالية</p>
+        <p style="font-size: 9px; font-weight: bold;">بتاريخ: ${date}</p>
       </div>
     `;
   } else if (params.type === 'USDT_POS') {
