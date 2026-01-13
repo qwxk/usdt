@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
   <head>
@@ -20,40 +19,42 @@
         color: #f8fafc;
         -webkit-tap-highlight-color: transparent;
         margin: 0;
+        overflow-x: hidden;
       }
+      #root:empty::before {
+        content: "";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(59, 130, 246, 0.1);
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      #root:empty::after {
+        content: "جاري تحميل نظام المصداقية...";
+        position: fixed;
+        top: calc(50% + 50px);
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 14px;
+        font-weight: 900;
+        color: #3b82f6;
+        letter-spacing: 0.1em;
+      }
+      @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
       @media print {
-        @page {
-          margin: 0;
-          size: 58mm auto;
-        }
-        body * {
-          visibility: hidden;
-        }
-        #print-section, #print-section * {
-          visibility: visible;
-        }
+        @page { margin: 0; size: 58mm auto; }
+        body * { visibility: hidden; }
+        #print-section, #print-section * { visibility: visible; }
         #print-section {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 58mm;
-          padding: 5mm;
-          background: white !important;
-          color: black !important;
-          font-size: 12px;
-          line-height: 1.4;
+          position: absolute; left: 0; top: 0; width: 58mm;
+          padding: 5mm; background: white !important; color: black !important;
         }
-        .no-print {
-          display: none !important;
-        }
-      }
-      input::-webkit-outer-spin-button,
-      input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      input[type=number] {
-        -moz-appearance: textfield;
       }
       .glass-card {
         background: rgba(15, 23, 42, 0.8);
@@ -62,22 +63,23 @@
       }
     </style>
     <script>
-      // التقاط حدث التثبيت مبكراً جداً وتخزينه عالمياً
+      // تخزين حدث التثبيت فوراً
       window.deferredPrompt = null;
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         window.deferredPrompt = e;
-        // إرسال حدث مخصص لإبلاغ React بأن التطبيق جاهز للتثبيت
         window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+        console.log('PWA Prompt Captured');
       });
     </script>
     <script type="importmap">
     {
       "imports": {
-        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-        "react/": "https://esm.sh/react@^19.2.3/",
-        "react": "https://esm.sh/react@^19.2.3",
-        "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+        "react-dom/": "https://esm.sh/react-dom@19.0.0/",
+        "react/": "https://esm.sh/react@19.0.0/",
+        "react": "https://esm.sh/react@19.0.0",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.460.0"
       }
     }
     </script>
@@ -85,15 +87,21 @@
   <body>
     <div id="root"></div>
     <div id="print-section"></div>
-    
     <script type="module" src="./index.tsx"></script>
-
     <script>
+      // تسجيل SW بطريقة متوافقة مع الـ Origin الحالي لتجنب أخطاء netlify/ai studio
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js', { scope: './' })
-            .then(reg => console.log('SW registered'))
-            .catch(err => console.log('SW error:', err));
+          const swPath = './sw.js';
+          navigator.serviceWorker.register(swPath, { scope: './' })
+            .then(reg => console.log('SW Active'))
+            .catch(err => {
+              console.warn('SW Registration issues, site will work but offline may be limited.');
+              // محاولة ثانية بدون الـ dot
+              if (err.name === 'SecurityError') {
+                navigator.serviceWorker.register('/sw.js');
+              }
+            });
         });
       }
     </script>
