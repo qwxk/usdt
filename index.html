@@ -47,7 +47,6 @@
           display: none !important;
         }
       }
-      /* Hide arrows in number inputs */
       input::-webkit-outer-spin-button,
       input::-webkit-inner-spin-button {
         -webkit-appearance: none;
@@ -61,31 +60,32 @@
         backdrop-filter: blur(8px);
         border: 1px solid rgba(51, 65, 85, 0.5);
       }
-      @keyframes shine {
-        100% {
-          left: 125%;
-        }
-      }
-      .animate-shine {
-        animation: shine 0.75s infinite;
-      }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
-  }
-}
-</script>
-</head>
+    <script>
+      // التقاط حدث التثبيت مبكراً جداً وتخزينه عالمياً
+      window.deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        // إرسال حدث مخصص لإبلاغ React بأن التطبيق جاهز للتثبيت
+        window.dispatchEvent(new CustomEvent('pwa-install-ready'));
+      });
+    </script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "react": "https://esm.sh/react@^19.2.3",
+        "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+      }
+    }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
     <div id="print-section"></div>
     
-    <!-- تشغيل ملف المدخل الرئيسي للتطبيق -->
     <script type="module" src="./index.tsx"></script>
 
     <script>

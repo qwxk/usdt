@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Wallet, RefreshCw, BarChart3, Zap, Download, Loader2, ShoppingCart, CheckCircle2, XCircle, Info, Smartphone, ArrowRight } from 'lucide-react';
+import { Wallet, RefreshCw, BarChart3, Zap, Download, Loader2, ShoppingCart, CheckCircle2, XCircle, Info, Smartphone, ArrowRight, Share } from 'lucide-react';
 import WalletCalculator from './components/WalletCalculator';
 import YussorPayCalculator from './components/YussorPayCalculator';
 import ExchangeCalculator from './components/ExchangeCalculator';
@@ -24,9 +24,10 @@ const App: React.FC = () => {
   const [lastSellRate, setLastSellRate] = useState<number>(() => Number(localStorage.getItem('sellRate')) || 0);
   const [lastUSDT, setLastUSDT] = useState<number>(() => Number(localStorage.getItem('usdtQty')) || 0);
 
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [canInstall, setCanInstall] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showInstallOverlay, setShowInstallOverlay] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches 
@@ -35,14 +36,20 @@ const App: React.FC = () => {
     
     setIsStandalone(checkStandalone);
 
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(ios);
+
     if (!checkStandalone && !sessionStorage.getItem('pwa_overlay_dismissed')) {
       setShowInstallOverlay(true);
     }
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
+    // التحقق من وجود الحدث المخزن في window
+    if ((window as any).deferredPrompt) {
+      setCanInstall(true);
+    }
+
+    const handlePwaReady = () => setCanInstall(true);
+    window.addEventListener('pwa-install-ready', handlePwaReady);
 
     const handleToastEvent = (e: any) => {
       const { message, type } = e.detail;
@@ -53,27 +60,33 @@ const App: React.FC = () => {
       }, 4000);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('app-toast' as any, handleToastEvent);
     
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-install-ready', handlePwaReady);
       window.removeEventListener('app-toast' as any, handleToastEvent);
     };
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) {
+    const deferredPrompt = (window as any).deferredPrompt;
+
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        (window as any).deferredPrompt = null;
+        setCanInstall(false);
+        setShowInstallOverlay(false);
+      }
+    } else if (isIOS) {
       window.dispatchEvent(new CustomEvent('app-toast', { 
-        detail: { message: 'يرجى استخدام خيار "الإضافة إلى الشاشة الرئيسية" من متصفحك', type: 'info' } 
+        detail: { message: 'اضغط على زر المشاركة ثم "إضافة إلى الشاشة الرئيسية"', type: 'info' } 
       }));
-      return;
-    }
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-      setShowInstallOverlay(false);
+    } else {
+      window.dispatchEvent(new CustomEvent('app-toast', { 
+        detail: { message: 'يرجى استخدام قائمة المتصفح لتثبيت التطبيق', type: 'info' } 
+      }));
     }
   };
 
@@ -138,7 +151,7 @@ const App: React.FC = () => {
 
             <h2 className="text-2xl font-black text-white mb-3 tracking-tight">تطبيق المصداقية للإلكترونيات</h2>
             <p className="text-slate-400 text-sm leading-relaxed mb-8 px-4 font-bold">
-              للحصول على أفضل تجربة، أداء أسرع، ودعم العمل بدون إنترنت، يرجى تثبيت التطبيق على جهازك.
+              {isIOS ? 'للحصول على أفضل تجربة، أضف التطبيق لشاشتك الرئيسية عبر زر المشاركة.' : 'قم بتثبيت التطبيق للوصول السريع والعمل بدون إنترنت.'}
             </p>
 
             <div className="w-full space-y-3">
@@ -146,8 +159,8 @@ const App: React.FC = () => {
                 onClick={handleInstallClick}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-blue-900/20"
               >
-                <Download className="w-6 h-6" />
-                <span>تثبيت التطبيق الآن</span>
+                {isIOS ? <Share className="w-6 h-6" /> : <Download className="w-6 h-6" />}
+                <span>{isIOS ? 'طريقة التثبيت على آيفون' : 'تثبيت التطبيق الآن'}</span>
               </button>
               
               <button 
@@ -164,7 +177,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Polish Toast Notification System - Fixed Dynamic Island Style */}
       <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none w-full px-6">
         {toasts.map(toast => (
           <div 
@@ -207,20 +219,20 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        {!isStandalone && deferredPrompt && (
+        {(!isStandalone && canInstall) && (
           <button 
             onClick={handleInstallClick}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black transition-all active:scale-95 shadow-lg shadow-blue-900/40"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>تثبيت التطبيق</span>
+            <span>تثبيت</span>
           </button>
         )}
         
-        {(isStandalone || !deferredPrompt) && (
+        {isStandalone && (
           <div className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-white/5">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></span>
-            <span className="text-[10px] font-bold text-slate-400">نظام ذكي</span>
+            <span className="text-[10px] font-bold text-slate-400">مثبت</span>
           </div>
         )}
 
